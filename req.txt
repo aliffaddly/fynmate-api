@@ -4,3 +4,4 @@ uvicorn
 sqlite-utils
 streamlit
 python-dotenv
+openai
