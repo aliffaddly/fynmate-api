@@ -1,4 +1,6 @@
-.env
+env.local
+env.prod
 __pycache__/
 db/finance.db 
 venv/
+.streamlit/*

@@ -8,55 +8,19 @@ from telegram.ext import (
 )
 from dotenv import load_dotenv
 import os
-import re
-import sqlite3
 from datetime import datetime
 from openai import OpenAI
 import requests
 
-# Load token dari .env
-load_dotenv()
+
+# Load token from env
+load_dotenv("env.local")  # test local
+# load_dotenv("env.prod") # for deploy
+
 TOKEN = os.getenv("TG_TOKEN")
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-
-# Setup database SQLite
-DB_PATH = "db/finance.db"
-conn = sqlite3.connect(DB_PATH)
-cursor = conn.cursor()
-
-# Create table kalau belum ada
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS transactions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER,
-    username TEXT,
-    message TEXT,
-    category TEXT,
-    amount INTEGER,
-    payment_method TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-)
-""")
-conn.commit()
-
-# === Helper: parse nominal dari text ===
-def parse_amount(text):
-    match = re.search(r"(\d+(?:[.,]?\d+)?)(k|rb)?", text.lower())
-    if not match:
-        return None
-
-    num = match.group(1)
-    suffix = match.group(2)
-
-    # normalize angka
-    num = num.replace(",", ".")
-    amount = float(num)
-
-    if suffix == "k" or suffix == "rb":
-        amount *= 1000
-
-    return int(amount)
+API_URL = os.getenv("API_URL")
+API_KEY = os.getenv("API_KEY")
 
 # parse with AI
 def parse_with_ai(text):
@@ -70,7 +34,7 @@ def parse_with_ai(text):
     Category for expenses only, choose from: Food, Transport, Entertainment, Shopping, Bills, Amal/Donasi/Zakat, Self Care, Other.
     Elaborate note if needed using Indonesian. make it concise and relevant to the message. remove unnecessary words, amount, and period at the end.
     Exclude any words that indicate buying or spending from the note e.g "beli", "makan", "ngopi", "jajan", "bayar", etc.
-    Payment method: Cash, OVO, GoPay, Dana, Credit Card DBS, Credit Card BRI, BCA, Mandiri, Jago, Other. If not found, return "Other".
+    Payment method: Cash, OVO, GoPay, Dana, Shopeepay, Credit Card, BCA, Mandiri, Jago, or any payment methods that users input upon 'via'. If not found, return "Other".
     """
 
     try:
@@ -86,11 +50,37 @@ def parse_with_ai(text):
         print("Error parsing with AI:", e)
         return None
 
+# Save transaction to API
+def save_to_api(user_id, username, note, category, amount, payment_method, created_at):
+    payload = {
+        "user_id": user_id,
+        "username": username,
+        "message": note,
+        "category": category,
+        "amount": amount,
+        "payment_method": payment_method,
+        "created_at": created_at
+    }
+
+    headers = {
+        "x-api-key": API_KEY,
+        "Content-Type": "application/json"
+    }
+
+    try:
+        r = requests.post(API_URL+"/transactions", json=payload, headers=headers)
+        print("API response:", r.json())
+        return True
+    except Exception as e:
+        print("Gagal POST ke API:", e)
+        return False
+
+
 # Command /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.message.from_user
     await update.message.reply_text(
-        f"Yo {user.first_name}! 👋 Kirim aja pesan kayak 'makan siang 50k' buat nyatet pengeluaran 💸"
+        f"Hi {user.first_name}! 👋 Kirim aja pesan kayak 'makan siang 50k' buat nyatet pengeluaran 💸"
     )
 
 # Handler buat teks biasa (bukan command)
@@ -100,35 +90,24 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     data = parse_with_ai(text)
     if not data or not data.get("amount"):
-        # fallback pakai regex
-        amount = parse_amount(text)
-        if not amount:
-            await update.message.reply_text(
-                "Gue gak nemu nominalnya bro 😅\nCoba ketik kayak 'ngopi 20k' atau 'beli boba 25000'."
-            )
-            return
-        category = "Other"
-        note = text
-        now = datetime.now().strftime("%Y-%m-%d %H:%M")
+        await update.message.reply_text(
+            "Oops! Nominal gak ketemu nih😅\nCoba ketik kayak 'ngopi 20k' atau 'beli boba 25000'.")
     else:
         amount = int(data.get("amount", 0))
         category = data.get("category", "Other")
         note = data.get("note", text)
-        payment = data.get("payment", "Other")
-        now = datetime.now().strftime("%Y-%m-%d %H:%M")
+        payment_method = data.get("payment", "Other")
+        created_at_now = datetime.now().strftime("%Y-%m-%d %H:%M")
 
-        # Simpan ke database
-        cursor.execute("INSERT INTO transactions (user_id, username, message, category, amount, payment_method, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                       (user.id, user.username, note, category, amount, payment, now))
-        conn.commit()
+        save_to_api(user.id, user.username, note, category, amount, payment_method, created_at_now)
 
         await update.message.reply_text(
             f"<b>✅ Noted bro, pengeluaran lo:</b>\n"
             f"<b>Deskripsi:</b> {note}\n"
             f"<b>Nominal:</b> Rp {amount:,.0f}\n"
-            f"<b>Metode Pembayaran:</b> {payment}\n"
+            f"<b>Metode Pembayaran:</b> {payment_method}\n"
             f"<b>Kategori:</b> {category}\n"
-            f"<b>Tanggal:</b> {now}",
+            f"<b>Tanggal:</b> {created_at_now}",
             parse_mode="HTML"
         )
 
