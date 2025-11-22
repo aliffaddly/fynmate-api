@@ -14,8 +14,8 @@ import requests
 
 
 # Load token from env
-load_dotenv("env.local")  # test local
-# load_dotenv("env.prod") # for deploy
+# load_dotenv("env.local")  # test local
+load_dotenv("env.prod") # for deploy
 
 TOKEN = os.getenv("TG_TOKEN")
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))

@@ -8,8 +8,8 @@ from supabase import create_client, Client
 
 app = FastAPI()
 
-load_dotenv("env.local")
-# load_dotenv("env.prod")
+# load_dotenv("env.local")
+load_dotenv("env.prod")
 
 url: str = os.getenv("SUPABASE_URL")
 key: str = os.getenv("SUPABASE_KEY")
