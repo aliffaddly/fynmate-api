@@ -1,13 +1,9 @@
 import streamlit as st
 import pandas as pd
-import sqlite3
 from datetime import date
 import requests
 
 st.set_page_config(page_title="FynMate Dashboard", layout="wide")
-
-# st.secrets["API_URL"]
-# st.secrets["API_KEY"]
 
 headers = {
         "x-api-key": st.secrets["API_KEY"],

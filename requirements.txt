@@ -5,5 +5,4 @@ sqlite-utils
 streamlit
 python-dotenv
 openai
-psycopg2
 supabase
