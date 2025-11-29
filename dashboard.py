@@ -24,12 +24,36 @@ def fetch_transactions():
         return pd.DataFrame()
 
 df = fetch_transactions()
+df = df[["id", "message", "payment_method", "amount", "category", "created_at"]]
+
+df["amount"] = pd.to_numeric(df["amount"])
+df["amount"] = df["amount"].apply(lambda x: f"Rp {x:,.0f}").str.replace(',', '.').astype(str)
+
+df["created_at"] = pd.to_datetime(df["created_at"], format="ISO8601")
+df["created_at"] = pd.to_datetime(df["created_at"]).dt.strftime("%d-%m-%Y %H:%M")
+
+total = df['amount'].str.replace('Rp ', '').str.replace('.', '').astype(float).sum()
+
+df = df.rename(columns={
+    "id": "ID",
+    "message": "Transaction",
+    "payment_method": "Payment Method",
+    "amount": "Amount",
+    "category": "Category",
+    "created_at": "Created At"
+})
 
 st.title("FynMate Dashboard")
-st.subheader("Lihat dan analisis pengeluaran lo di sini!")
+st.subheader("Lihat dan analisis pengeluaran kamu di sini 💸")
+
+# r = requests.get(st.secrets["API_URL"]+"/transactions", headers=headers)
+# data = r.json()
+# st.write("Raw data from Supabase:", data)
+# st.write(st.secrets)
 
 # === Summary Metrics ===
 st.dataframe(df)
+
 
 # === Pagination ===
 # items_per_page = 10
@@ -57,25 +81,27 @@ st.dataframe(df)
 # st.dataframe(df.iloc[start:end])
 
 
-# total = df['Amount'].sum()
-# st.metric("Total Pengeluaran", f"Rp {total:,.0f}")
 
+st.metric("Total pengeluaran bulan ini", f"Rp {total:,.0f}")
 
+st.divider()
 # #  === Summary pengeluaran hari ini ===
-# st.subheader(f"Pengeluaran Hari Ini ({date.today()})")
+st.subheader(f"Pengeluaran Hari Ini ({date.today().strftime('%d-%m-%Y')})")
 
-# df["Date"] = pd.to_datetime(df["Date"])
-# today = pd.Timestamp.today().normalize()
-# df_today = df[df["Date"].dt.date == today.date()]
+df["Created At"] = pd.to_datetime(df["Created At"])
+today = pd.Timestamp.today().normalize()
+df_today = df[df["Created At"].dt.date == today.date()]
 
-# total_today = df_today['Amount'].sum()
-# st.metric("Total Pengeluaran Hari Ini: ", f"Rp {total_today:,.0f}")
+st.dataframe(df_today)
 
-# st.dataframe(df_today)
+total_today = df_today['amount'].sum()
+st.metric("Total Pengeluaran Hari Ini: ", f"Rp {total_today:,.0f}")
 
 
-# #  === Chart Pengeluaran per Kategori ===
-# st.subheader("Pengeluaran per Kategori")
-# chart = df.groupby('Category')['Amount'].sum().reset_index()
-# st.bar_chart(data=chart, x='Category', y='Amount',)
+st.divider()
+#  === Chart Pengeluaran per Kategori ===
+st.subheader("Pengeluaran per Kategori")
+chart = df.groupby('Category')['amount'].sum().reset_index()
+st.bar_chart(data=chart, x='Category', y='amount',)
 
+st.warning("More to come! Please stay tuned", icon="⚠️")
