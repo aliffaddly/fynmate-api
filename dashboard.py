@@ -117,7 +117,8 @@ st.divider()
 # #  === Summary pengeluaran hari ini ===
 st.subheader(f"Pengeluaran Hari Ini ({date.today().strftime('%d %b %Y')})")
 
-if fetch_transactions_today().empty:
+df_today = fetch_transactions_today()
+if df_today.empty:
     pass
 else:   
     df_today, total_expense_today, count = fetch_transactions_today()
