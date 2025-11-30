@@ -117,11 +117,10 @@ st.divider()
 # #  === Summary pengeluaran hari ini ===
 st.subheader(f"Pengeluaran Hari Ini ({date.today().strftime('%d %b %Y')})")
 
-df_today, total_expense_today, count = fetch_transactions_today()
-
-if df_today.empty:
+if fetch_transactions_today().empty:
     pass
 else:   
+    df_today, total_expense_today, count = fetch_transactions_today()
     df_today["amount"] = df_today["amount"].astype(int)
     df_today["amount_display"] = df_today["amount"].apply(lambda x: f"Rp {x:,.0f}").str.replace(',', '.')
     df_today["created_at"] = pd.to_datetime(df_today["created_at"], format="ISO8601")
