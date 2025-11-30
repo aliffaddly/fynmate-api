@@ -17,33 +17,55 @@ key: str = os.getenv("SUPABASE_KEY")
 supabase: Client = create_client(url, key)
 
 @app.get("/transactions")
-def get_transactions():
+def get_transactions(uid: int):
     try:
-        result = supabase.table("transactions").select("*").order("created_at", desc=True).execute()
+        result = supabase.table("transactions").select("*").eq("user_id", uid).order("created_at", desc=True).execute()
+        total_expense = sum(item["amount"] for item in result.data)
+        
+        if not result.data:
+            return {
+                "status": "error",
+                "message": "User not found or no transactions yet",
+                "data": []
+            }
+        
         return {
             "status": "success",
-            "data": result.data
+            "data": result.data,
+            "total_expense": total_expense,
+            "count": len(result.data)
             }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.get("/transactions/today")
-def get_transactions_today():
+def get_transactions_today(uid: int):
     today = datetime.now().date().isoformat()
 
     try:
         result = (
             supabase.table("transactions")
             .select("*")
+            .eq("user_id", uid)
             .gte("created_at", f"{today} 00:00:00")
             .lte("created_at", f"{today} 23:59:59")
             .order("created_at", desc=True)
             .execute()
         )
+        total_expense_today = sum(item["amount"] for item in result.data)
+        if not result.data:
+            return {
+                "status": "error",
+                "message": "No transaction found for today",
+                "data": []
+            }
+
         return {
             "status": "success",
-            "data": result.data
+            "data": result.data,
+            "total_expense_today": total_expense_today,
+            "count": len(result.data)
             }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
