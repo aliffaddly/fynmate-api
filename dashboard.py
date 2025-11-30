@@ -117,35 +117,36 @@ st.divider()
 # #  === Summary pengeluaran hari ini ===
 st.subheader(f"Pengeluaran Hari Ini ({date.today().strftime('%d %b %Y')})")
 
-df_today = fetch_transactions_today()
-if df_today.empty:
-    pass
-else:   
-    df_today, total_expense_today, count = fetch_transactions_today()
-    df_today["amount"] = df_today["amount"].astype(int)
-    df_today["amount_display"] = df_today["amount"].apply(lambda x: f"Rp {x:,.0f}").str.replace(',', '.')
-    df_today["created_at"] = pd.to_datetime(df_today["created_at"], format="ISO8601")
-    df_today["created_at"] = pd.to_datetime(df_today["created_at"]).dt.strftime("%d-%m-%Y %H:%M")
-    df_today = df_today.rename(columns={
-        # "id": "ID",
-        "message": "Transaction",
-        "payment_method": "Payment Method",
-        "amount_display": "Amount",
-        "category": "Category",
-        "created_at": "Created At"
-    })[[
-        # "ID",
-        "Transaction",
-        "Payment Method",
-        "Amount",     
-        "Category",
-        "Created At"
-    ]]
-    df_today.index = range(1, len(df_today) + 1)
-    st.dataframe(df_today)
+result = fetch_transactions_today()
+if isinstance(result, tuple) and len(result) == 3:
+    df_today, total_expense_today, count = result
+    if df_today.empty:
+        pass
+    else:   
+        df_today["amount"] = df_today["amount"].astype(int)
+        df_today["amount_display"] = df_today["amount"].apply(lambda x: f"Rp {x:,.0f}").str.replace(',', '.')
+        df_today["created_at"] = pd.to_datetime(df_today["created_at"], format="ISO8601")
+        df_today["created_at"] = pd.to_datetime(df_today["created_at"]).dt.strftime("%d-%m-%Y %H:%M")
+        df_today = df_today.rename(columns={
+            # "id": "ID",
+            "message": "Transaction",
+            "payment_method": "Payment Method",
+            "amount_display": "Amount",
+            "category": "Category",
+            "created_at": "Created At"
+        })[[
+            # "ID",
+            "Transaction",
+            "Payment Method",
+            "Amount",     
+            "Category",
+            "Created At"
+        ]]
+        df_today.index = range(1, len(df_today) + 1)
+        st.dataframe(df_today)
 
-    total_today = total_expense_today
-    st.metric("Total Pengeluaran Hari Ini: ", f"Rp {total_today:,.0f}".replace(',', '.'))
+        total_today = total_expense_today
+        st.metric("Total Pengeluaran Hari Ini: ", f"Rp {total_today:,.0f}".replace(',', '.'))
 
 st.divider()
 
